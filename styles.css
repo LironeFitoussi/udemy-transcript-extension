@@ -1,0 +1,65 @@
+/* Udemy Transcript Copier - Notification Styles */
+
+.udemy-transcript-copier-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 12px 16px;
+  border-radius: 4px;
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  z-index: 10000;
+  animation: utc-slideIn 0.3s ease-out;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  max-width: 360px;
+}
+
+.udemy-transcript-copier-notification.udemy-transcript-copier-success {
+  background-color: #4caf50;
+  color: white;
+}
+
+.udemy-transcript-copier-notification.udemy-transcript-copier-error {
+  background-color: #f44336;
+  color: white;
+}
+
+.udemy-transcript-copier-notification.udemy-transcript-copier-info {
+  background-color: #2196f3;
+  color: white;
+}
+
+.utc-notification-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.utc-notification-close {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0;
+  margin-left: 8px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.utc-notification-close:hover {
+  opacity: 0.8;
+}
+
+@keyframes utc-slideIn {
+  from {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* No custom button styles needed — button uses Udemy's own ud-btn classes */
