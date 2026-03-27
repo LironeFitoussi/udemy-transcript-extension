@@ -1,26 +1,30 @@
 Udemy Transcript Copier
 
-Copy any Udemy lesson transcript to your clipboard with a single click.
+Copy any Udemy lesson transcript to your clipboard with a single click — no sidebar required.
 
 HOW IT WORKS
-A small clipboard icon appears directly in the Udemy video player controls (next to the other buttons like Transcript, Captions, and Settings). Click it while the Transcript panel is open, and the full transcript is instantly copied to your clipboard.
+A clipboard icon appears directly in the Udemy video player controls (next to Transcript, Captions, and Settings). Click it and the full transcript is fetched instantly via Udemy's API in the background and copied to your clipboard. The button shows a spinner while loading and restores automatically when done.
+
+No sidebar toggling. No page manipulation. No UI side effects.
 
 FEATURES
-• One-click copy — no menus, no extra steps
+• One-click copy — works whether the transcript panel is open or closed
+• API-powered — fetches directly from Udemy's caption API, not the DOM
+• Loading spinner — visual feedback while fetching, prevents double-clicks
 • Three copy formats: Plain text, Markdown, or JSON
 • Optional metadata — prepend course title, lesson name, and date
-• Works with all Udemy transcripts (auto-generated and manual)
-• Lightweight — no background processes, no external requests
+• SPA-aware — button stays injected when navigating between lectures
+• Lightweight — no background service worker, no external requests
 
 USE CASES
-• Feed transcripts directly into ChatGPT, Claude, or other AI tools
+• Feed transcripts into ChatGPT, Claude, or other AI tools instantly
 • Save lesson notes for offline reference
-• Create summaries or study guides from course content
-• Archive transcripts for personal use
+• Generate summaries or study guides from course content
+• Export to Notion, Obsidian, or any note-taking app
 
 PRIVACY
-This extension operates entirely on your device. No transcript text, usage data, or personal information is ever transmitted anywhere. The only permissions used are clipboard access (to write the transcript) and storage (to save your format preferences).
+This extension operates entirely on your device using your existing Udemy session. No transcript content, usage data, or personal information is ever transmitted anywhere. The only permissions used are clipboard access (to copy the transcript) and storage (to save your format preference).
 
 PERMISSIONS EXPLAINED
-• clipboard-write: Required to copy transcript text to your clipboard
+• clipboard-write: Required to copy the transcript text to your clipboard
 • storage: Required to remember your preferred copy format between sessions
