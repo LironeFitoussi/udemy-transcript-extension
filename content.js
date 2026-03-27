@@ -131,7 +131,7 @@ async function fetchTranscriptFromApi() {
 
   // Step 3: fetch the VTT file and parse it
   try {
-    const vttRes = await fetch(caption.url, { credentials: 'include' });
+    const vttRes = await fetch(caption.url);
     if (!vttRes.ok) {
       console.warn('[UTC] VTT fetch returned', vttRes.status);
       return null;
