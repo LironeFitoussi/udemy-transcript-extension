@@ -30,37 +30,125 @@ function loadPrefs() {
 }
 
 /**
- * Extract transcript text from the page.
- * Targets [data-purpose="cue-text"] spans inside [data-purpose="transcript-panel"].
- * @returns {string|null} Transcript text or null if not found
+ * Extract course ID from the page's data-module-args attribute.
+ * @returns {string|null}
  */
-function getTranscriptText() {
-  // Method 1: Direct — the transcript panel has a stable data-purpose attribute
-  const transcriptPanel = document.querySelector('[data-purpose="transcript-panel"]');
+function getCourseId() {
+  const el = document.querySelector('[data-module-id="course-taking"]');
+  if (!el) return null;
+  try {
+    const args = JSON.parse(el.getAttribute('data-module-args') || '{}');
+    return args.courseId ? String(args.courseId) : null;
+  } catch {
+    return null;
+  }
+}
 
-  if (transcriptPanel) {
-    // Collect each cue-text span and join with spaces
-    const cues = Array.from(transcriptPanel.querySelectorAll('[data-purpose="cue-text"]'));
-    if (cues.length > 0) {
-      return cues.map(cue => cue.innerText.trim()).filter(Boolean).join(' ');
-    }
-    // Fallback: just use innerText of the whole panel
-    const raw = transcriptPanel.innerText?.trim();
-    if (raw?.length > 50) return raw;
+/**
+ * Extract lecture ID from the current page URL.
+ * URL pattern: /course/.../learn/lecture/{lectureId}
+ * @returns {string|null}
+ */
+function getLectureId() {
+  const match = window.location.pathname.match(/\/learn\/lecture\/(\d+)/);
+  return match ? match[1] : null;
+}
+
+/**
+ * Parse a WebVTT string into clean plain text (no timestamps, no cue IDs).
+ * @param {string} vtt
+ * @returns {string}
+ */
+function parseVtt(vtt) {
+  return vtt
+    .split('\n')
+    .filter(line => {
+      const t = line.trim();
+      return t &&
+        t !== 'WEBVTT' &&
+        !t.includes('-->') &&       // timestamp lines
+        !/^\d+$/.test(t) &&         // bare cue index numbers
+        !t.startsWith('NOTE') &&
+        !t.startsWith('STYLE') &&
+        !t.startsWith('REGION');
+    })
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Fetch transcript via Udemy's API — no sidebar interaction needed.
+ * Uses the browser's existing session cookies for auth.
+ * @returns {Promise<string|null>}
+ */
+async function fetchTranscriptFromApi() {
+  const courseId = getCourseId();
+  const lectureId = getLectureId();
+
+  if (!courseId || !lectureId) {
+    console.warn('[UTC] Could not determine courseId or lectureId', { courseId, lectureId });
+    return null;
   }
 
-  // Method 2: Find sidebar content area by data-purpose="sidebar-content"
-  // and look for transcript cues inside it
-  const sidebarContent = document.querySelector('[data-purpose="sidebar-content"]');
-  if (sidebarContent) {
-    const cues = Array.from(sidebarContent.querySelectorAll('[data-purpose="cue-text"]'));
-    if (cues.length > 0) {
-      return cues.map(cue => cue.innerText.trim()).filter(Boolean).join(' ');
+  // Step 1: get the captions array for this lecture
+  const apiUrl = `https://www.udemy.com/api-2.0/users/me/subscribed-courses/${courseId}/lectures/${lectureId}/?fields[lecture]=asset&fields[asset]=captions`;
+
+  let captionsArr;
+  try {
+    const res = await fetch(apiUrl, { credentials: 'include' });
+    if (!res.ok) {
+      console.warn('[UTC] Lecture API returned', res.status);
+      return null;
     }
+    const data = await res.json();
+    captionsArr = data?.asset?.captions;
+  } catch (err) {
+    console.warn('[UTC] Lecture API fetch failed', err);
+    return null;
   }
 
-  console.warn('[UTC] Transcript panel not found');
-  return null;
+  if (!Array.isArray(captionsArr) || captionsArr.length === 0) {
+    console.warn('[UTC] No captions available for this lecture');
+    return null;
+  }
+
+  // Step 2: prefer English, fall back to first available
+  const caption =
+    captionsArr.find(c => c.locale_id === 'en_US') ||
+    captionsArr.find(c => c.locale_id?.startsWith('en')) ||
+    captionsArr[0];
+
+  if (!caption?.url) return null;
+
+  // Step 3: fetch the VTT file and parse it
+  try {
+    const vttRes = await fetch(caption.url, { credentials: 'include' });
+    if (!vttRes.ok) {
+      console.warn('[UTC] VTT fetch returned', vttRes.status);
+      return null;
+    }
+    const vttText = await vttRes.text();
+    return parseVtt(vttText) || null;
+  } catch (err) {
+    console.warn('[UTC] VTT fetch failed', err);
+    return null;
+  }
+}
+
+/**
+ * Fallback: read transcript from the sidebar DOM if already open.
+ * @returns {string|null}
+ */
+function getTranscriptFromDom() {
+  const panel = document.querySelector('[data-purpose="transcript-panel"]');
+  if (!panel) return null;
+  const cues = Array.from(panel.querySelectorAll('[data-purpose="cue-text"]'));
+  if (cues.length > 0) {
+    return cues.map(c => c.innerText.trim()).filter(Boolean).join(' ');
+  }
+  const raw = panel.innerText?.trim();
+  return raw?.length > 50 ? raw : null;
 }
 
 /**
@@ -164,51 +252,17 @@ function showNotification(message, type = 'success', duration = 3000) {
 }
 
 /**
- * Silently ensure the transcript sidebar is open, extract text, then restore
- * the sidebar to its original state (close it if it was closed before).
- * @returns {Promise<string|null>}
- */
-async function getTranscriptWithAutoOpen() {
-  // Check if transcript panel is already in the DOM and has content
-  const existing = getTranscriptText();
-  if (existing) return existing;
-
-  // Transcript not visible — find the toggle button and click it to open
-  const toggleBtn = document.querySelector('button[data-purpose="transcript-toggle"]');
-  if (!toggleBtn) return null;
-
-  const wasOpen = toggleBtn.getAttribute('aria-expanded') === 'true';
-
-  if (!wasOpen) {
-    toggleBtn.click();
-  }
-
-  // Wait for the transcript panel to appear and populate (up to 3s)
-  const text = await new Promise((resolve) => {
-    let attempts = 0;
-    const interval = setInterval(() => {
-      const t = getTranscriptText();
-      attempts++;
-      if (t || attempts >= 30) {
-        clearInterval(interval);
-        resolve(t || null);
-      }
-    }, 100);
-  });
-
-  // Close the sidebar again if we opened it
-  if (!wasOpen) {
-    toggleBtn.click();
-  }
-
-  return text;
-}
-
-/**
- * Handle copy transcript button click
+ * Handle copy transcript button click.
+ * Tries API first (silent, no sidebar needed), falls back to DOM.
  */
 async function handleCopyTranscript() {
-  const rawText = await getTranscriptWithAutoOpen();
+  // API approach — fast, silent, no UI side effects
+  let rawText = await fetchTranscriptFromApi();
+
+  // DOM fallback — works if sidebar is already open
+  if (!rawText) {
+    rawText = getTranscriptFromDom();
+  }
 
   if (!rawText) {
     showNotification('No transcript available for this lesson.', 'error');
