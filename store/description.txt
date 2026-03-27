@@ -1,0 +1,26 @@
+Udemy Transcript Copier
+
+Copy any Udemy lesson transcript to your clipboard with a single click.
+
+HOW IT WORKS
+A small clipboard icon appears directly in the Udemy video player controls (next to the other buttons like Transcript, Captions, and Settings). Click it while the Transcript panel is open, and the full transcript is instantly copied to your clipboard.
+
+FEATURES
+• One-click copy — no menus, no extra steps
+• Three copy formats: Plain text, Markdown, or JSON
+• Optional metadata — prepend course title, lesson name, and date
+• Works with all Udemy transcripts (auto-generated and manual)
+• Lightweight — no background processes, no external requests
+
+USE CASES
+• Feed transcripts directly into ChatGPT, Claude, or other AI tools
+• Save lesson notes for offline reference
+• Create summaries or study guides from course content
+• Archive transcripts for personal use
+
+PRIVACY
+This extension operates entirely on your device. No transcript text, usage data, or personal information is ever transmitted anywhere. The only permissions used are clipboard access (to write the transcript) and storage (to save your format preferences).
+
+PERMISSIONS EXPLAINED
+• clipboard-write: Required to copy transcript text to your clipboard
+• storage: Required to remember your preferred copy format between sessions
