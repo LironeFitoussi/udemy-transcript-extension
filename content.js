@@ -45,11 +45,17 @@ function getCourseId() {
 }
 
 /**
- * Extract lecture ID from the current page URL.
- * URL pattern: /course/.../learn/lecture/{lectureId}
+ * Extract lecture ID — first from data-module-args (most reliable),
+ * then fall back to the URL.
  * @returns {string|null}
  */
 function getLectureId() {
+  // data-module-args always has the current lecture id
+  try {
+    const el = document.querySelector('[data-module-id="course-taking"]');
+    const args = JSON.parse(el?.getAttribute('data-module-args') || '{}');
+    if (args.initialCurriculumItemId) return String(args.initialCurriculumItemId);
+  } catch {}
   const match = window.location.pathname.match(/\/learn\/lecture\/(\d+)/);
   return match ? match[1] : null;
 }
@@ -92,7 +98,7 @@ async function fetchTranscriptFromApi() {
   }
 
   // Step 1: get the captions array for this lecture
-  const apiUrl = `https://www.udemy.com/api-2.0/users/me/subscribed-courses/${courseId}/lectures/${lectureId}/?fields[lecture]=asset&fields[asset]=captions`;
+  const apiUrl = `https://www.udemy.com/api-2.0/users/me/subscribed-courses/${courseId}/lectures/${lectureId}/?fields[lecture]=asset&fields[asset]=captions&page_size=100`;
 
   let captionsArr;
   try {
@@ -113,11 +119,13 @@ async function fetchTranscriptFromApi() {
     return null;
   }
 
-  // Step 2: prefer English, fall back to first available
-  const caption =
-    captionsArr.find(c => c.locale_id === 'en_US') ||
-    captionsArr.find(c => c.locale_id?.startsWith('en')) ||
-    captionsArr[0];
+  // Step 2: prefer English by locale_id or video_label, fall back to first available
+  const isEnglish = c =>
+    c.locale_id === 'en_US' ||
+    c.locale_id?.startsWith('en') ||
+    c.video_label?.toLowerCase().includes('english');
+
+  const caption = captionsArr.find(isEnglish) || captionsArr[0];
 
   if (!caption?.url) return null;
 
