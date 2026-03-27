@@ -164,16 +164,54 @@ function showNotification(message, type = 'success', duration = 3000) {
 }
 
 /**
+ * Silently ensure the transcript sidebar is open, extract text, then restore
+ * the sidebar to its original state (close it if it was closed before).
+ * @returns {Promise<string|null>}
+ */
+async function getTranscriptWithAutoOpen() {
+  // Check if transcript panel is already in the DOM and has content
+  const existing = getTranscriptText();
+  if (existing) return existing;
+
+  // Transcript not visible — find the toggle button and click it to open
+  const toggleBtn = document.querySelector('button[data-purpose="transcript-toggle"]');
+  if (!toggleBtn) return null;
+
+  const wasOpen = toggleBtn.getAttribute('aria-expanded') === 'true';
+
+  if (!wasOpen) {
+    toggleBtn.click();
+  }
+
+  // Wait for the transcript panel to appear and populate (up to 3s)
+  const text = await new Promise((resolve) => {
+    let attempts = 0;
+    const interval = setInterval(() => {
+      const t = getTranscriptText();
+      attempts++;
+      if (t || attempts >= 30) {
+        clearInterval(interval);
+        resolve(t || null);
+      }
+    }, 100);
+  });
+
+  // Close the sidebar again if we opened it
+  if (!wasOpen) {
+    toggleBtn.click();
+  }
+
+  return text;
+}
+
+/**
  * Handle copy transcript button click
  */
 async function handleCopyTranscript() {
-  const rawText = getTranscriptText();
+  const rawText = await getTranscriptWithAutoOpen();
 
   if (!rawText) {
-    showNotification(
-      'Transcript not found. Please open the transcript panel first.',
-      'error'
-    );
+    showNotification('No transcript available for this lesson.', 'error');
     return;
   }
 
@@ -189,10 +227,7 @@ async function handleCopyTranscript() {
       2500
     );
   } else {
-    showNotification(
-      'Failed to copy transcript. Please try again.',
-      'error'
-    );
+    showNotification('Failed to copy transcript. Please try again.', 'error');
   }
 }
 
