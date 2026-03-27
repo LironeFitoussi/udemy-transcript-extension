@@ -63,3 +63,13 @@
 }
 
 /* No custom button styles needed — button uses Udemy's own ud-btn classes */
+
+/* Spinner animation for loading state */
+@keyframes utc-spin {
+  to { transform: rotate(360deg); }
+}
+
+.utc-spinner {
+  animation: utc-spin 0.75s linear infinite;
+  transform-origin: center;
+}

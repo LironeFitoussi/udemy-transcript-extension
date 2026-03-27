@@ -260,36 +260,71 @@ function showNotification(message, type = 'success', duration = 3000) {
 }
 
 /**
+ * Set the copy button into a loading spinner state or restore it.
+ * @param {boolean} loading
+ */
+function setButtonLoading(loading) {
+  const btn = document.getElementById(`${CONFIG.EXTENSION_ID}-btn`);
+  if (!btn) return;
+
+  if (loading) {
+    btn.disabled = true;
+    btn.setAttribute('aria-label', 'Loading transcript…');
+    btn.innerHTML = `
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"
+           class="ud-icon ud-icon-medium utc-spinner"
+           fill="none" stroke="currentColor" stroke-width="2.5">
+        <circle cx="12" cy="12" r="9" stroke-opacity="0.25"/>
+        <path d="M12 3 a9 9 0 0 1 9 9" stroke-linecap="round"/>
+      </svg>`;
+  } else {
+    btn.disabled = false;
+    btn.setAttribute('aria-label', 'Copy transcript');
+    btn.innerHTML = `
+      <svg aria-label="Copy transcript" role="img" focusable="false"
+           class="ud-icon ud-icon-medium" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M19 2h-4.18C14.4.84 13.3 0 12 0c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm7 18H5V4h2v3h10V4h2v16z"/>
+      </svg>`;
+  }
+}
+
+/**
  * Handle copy transcript button click.
  * Tries API first (silent, no sidebar needed), falls back to DOM.
  */
 async function handleCopyTranscript() {
-  // API approach — fast, silent, no UI side effects
-  let rawText = await fetchTranscriptFromApi();
+  setButtonLoading(true);
 
-  // DOM fallback — works if sidebar is already open
-  if (!rawText) {
-    rawText = getTranscriptFromDom();
-  }
+  try {
+    // API approach — fast, silent, no UI side effects
+    let rawText = await fetchTranscriptFromApi();
 
-  if (!rawText) {
-    showNotification('No transcript available for this lesson.', 'error');
-    return;
-  }
+    // DOM fallback — works if sidebar is already open
+    if (!rawText) {
+      rawText = getTranscriptFromDom();
+    }
 
-  const prefs = await loadPrefs();
-  const formattedText = formatTranscript(rawText, prefs);
-  const success = await copyToClipboard(formattedText);
+    if (!rawText) {
+      showNotification('No transcript available for this lesson.', 'error');
+      return;
+    }
 
-  if (success) {
-    const formatLabel = prefs.format === 'plain' ? 'Plain text' : prefs.format === 'markdown' ? 'Markdown' : 'JSON';
-    showNotification(
-      `✓ Transcript copied! (${rawText.length} chars · ${formatLabel})`,
-      'success',
-      2500
-    );
-  } else {
-    showNotification('Failed to copy transcript. Please try again.', 'error');
+    const prefs = await loadPrefs();
+    const formattedText = formatTranscript(rawText, prefs);
+    const success = await copyToClipboard(formattedText);
+
+    if (success) {
+      const formatLabel = prefs.format === 'plain' ? 'Plain text' : prefs.format === 'markdown' ? 'Markdown' : 'JSON';
+      showNotification(
+        `✓ Transcript copied! (${rawText.length} chars · ${formatLabel})`,
+        'success',
+        2500
+      );
+    } else {
+      showNotification('Failed to copy transcript. Please try again.', 'error');
+    }
+  } finally {
+    setButtonLoading(false);
   }
 }
 
