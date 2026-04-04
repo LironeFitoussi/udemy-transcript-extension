@@ -45,19 +45,23 @@ function getCourseId() {
 }
 
 /**
- * Extract lecture ID — first from data-module-args (most reliable),
- * then fall back to the URL.
+ * Extract lecture ID — URL is always up-to-date on SPA navigation,
+ * so check it first. Fall back to data-module-args for edge cases
+ * where the lecture is loaded without a URL change.
  * @returns {string|null}
  */
 function getLectureId() {
-  // data-module-args always has the current lecture id
+  // URL is updated synchronously by the SPA router — always current
+  const fromUrl = getLectureIdFromUrl();
+  if (fromUrl) return fromUrl;
+
+  // Fallback: data-module-args (may lag slightly after navigation)
   try {
     const el = document.querySelector('[data-module-id="course-taking"]');
     const args = JSON.parse(el?.getAttribute('data-module-args') || '{}');
     if (args.initialCurriculumItemId) return String(args.initialCurriculumItemId);
   } catch {}
-  const match = window.location.pathname.match(/\/learn\/lecture\/(\d+)/);
-  return match ? match[1] : null;
+  return null;
 }
 
 /**
@@ -362,6 +366,32 @@ function createCopyButton() {
 let injectRetryCount = 0;
 const MAX_RETRIES = 20;
 
+// Track the lecture ID seen in the URL so we can detect SPA navigations
+let currentLectureId = getLectureIdFromUrl();
+
+/**
+ * Extract lecture ID directly from the current URL (always up-to-date on SPA nav).
+ * @returns {string|null}
+ */
+function getLectureIdFromUrl() {
+  const match = window.location.pathname.match(/\/learn\/lecture\/(\d+)/);
+  return match ? match[1] : null;
+}
+
+/**
+ * Called whenever the URL changes (pushState / popstate).
+ * If the lecture has changed, reset and re-inject the button.
+ */
+function onUrlChange() {
+  const newLectureId = getLectureIdFromUrl();
+  if (newLectureId && newLectureId !== currentLectureId) {
+    console.log(`[UTC] Lecture changed: ${currentLectureId} → ${newLectureId}`);
+    currentLectureId = newLectureId;
+    injectRetryCount = 0;
+    injectButton();
+  }
+}
+
 /**
  * Inject the button into the control bar
  */
@@ -425,6 +455,16 @@ function init() {
     subtree: true,
     attributes: false,
   });
+
+  // Detect SPA lecture changes via history.pushState (Udemy uses the History API)
+  const originalPushState = history.pushState.bind(history);
+  history.pushState = function (...args) {
+    originalPushState(...args);
+    onUrlChange();
+  };
+
+  // Also handle browser back/forward navigation
+  window.addEventListener('popstate', onUrlChange);
 }
 
 // Start extension

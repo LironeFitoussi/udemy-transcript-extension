@@ -1,0 +1,50 @@
+flowchart TD
+    A[User visits udemy.com/course/.../lecture/...] --> B[Chrome loads content.js]
+
+    B --> C{document ready?}
+    C -- loading --> D[Wait for DOMContentLoaded]
+    C -- ready --> E[injectButton]
+    D --> E
+
+    E --> F{Control bar found?}
+    F -- no, retry < 20 --> G[setTimeout 500ms → retry]
+    G --> E
+    F -- no, max retries --> H[Warn & give up]
+    F -- yes --> I[Insert Copy button before theatre-mode btn]
+
+    I --> J[MutationObserver watches body]
+    J -- SPA nav removed button --> E
+
+    subgraph "User clicks Copy button"
+        K[setButtonLoading true] --> L[fetchTranscriptFromApi]
+        L --> M[getCourseId from data-module-args]
+        L --> N[getLectureId from data-module-args or URL]
+        M & N --> O[GET /api-2.0/users/me/subscribed-courses/:courseId/lectures/:lectureId with session cookies]
+        O --> P{OK?}
+        P -- yes --> Q[Find English caption URL from captions array]
+        Q --> R[fetch VTT file from CDN]
+        R --> S[parseVtt - strip timestamps, cue IDs, headers]
+        P -- no / error --> T[DOM fallback: read transcript-panel cues]
+        S --> U{rawText?}
+        T --> U
+        U -- null --> V[showNotification error]
+        U -- text --> W[loadPrefs from chrome.storage.sync]
+        W --> X[formatTranscript]
+        X --> X1{prefs.format}
+        X1 -- plain --> X2[raw text, optionally prepend metadata header]
+        X1 -- markdown --> X3[## heading + italic meta + text]
+        X1 -- json --> X4[JSON object with transcript + meta fields]
+        X2 & X3 & X4 --> Y[copyToClipboard navigator.clipboard.writeText]
+        Y --> Z[showNotification success]
+        V & Z --> AA[setButtonLoading false]
+    end
+
+    I --> K
+
+    subgraph "Popup settings"
+        BB[User opens extension popup] --> CC[loadPrefs from chrome.storage.sync]
+        CC --> DD[Populate format radio + metadata checkbox]
+        DD --> EE[User clicks Save]
+        EE --> FF[savePrefs → chrome.storage.sync.set]
+        FF --> GG[Show saved confirmation 1.5s]
+    end
