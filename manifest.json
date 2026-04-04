@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Udemy Transcript Copier",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Copy Udemy lesson transcripts to clipboard with a single click. Supports plain text, Markdown, and JSON formats.",
 
   "permissions": [
