@@ -28,3 +28,20 @@ This extension operates entirely on your device using your existing Udemy sessio
 PERMISSIONS EXPLAINED
 • clipboard-write: Required to copy the transcript text to your clipboard
 • storage: Required to remember your preferred copy format between sessions
+
+VERSION HISTORY
+
+v1.0.1 (latest)
+• Fixed a bug where navigating between lectures without a full page reload (Udemy's SPA routing) caused the copy button to fetch the wrong lesson's transcript
+• The extension now listens to URL changes in real time — when you switch to a new lecture, the button resets and re-injects itself into the updated control bar
+• Lecture ID is now read directly from the URL (always in sync with navigation) instead of relying on a DOM attribute that could lag behind
+
+v1.0.0 — Initial Release
+• Injected a clipboard icon button directly into the Udemy video player control bar
+• Fetches the full transcript via Udemy's internal caption API — no sidebar interaction required
+• Falls back to reading the transcript DOM if the API is unavailable
+• Loading spinner during fetch with disabled state to prevent double-clicks
+• Three output formats: Plain text, Markdown (with optional heading), and JSON
+• Optional metadata header: prepends course title, lesson name, and timestamp
+• MutationObserver re-injects the button if Udemy's UI removes it during navigation
+• No background service worker, no external servers, no data collection
